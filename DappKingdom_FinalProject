@@ -1,0 +1,150 @@
+
+// deploy_contract.js
+const TronWeb = require('tronweb');
+const fs = require('fs');
+
+const fullNode = 'https://api.trongrid.io';
+const solidityNode = 'https://api.trongrid.io';
+const eventServer = 'https://api.trongrid.io';
+
+// وارد کردن کلید خصوصی کیف پول شما در اینجا
+const privateKey = 'YOUR_PRIVATE_KEY_HERE';
+
+const tronWeb = new TronWeb(fullNode, solidityNode, eventServer, privateKey);
+
+// بارگذاری ABI و Bytecode
+const abi = JSON.parse(fs.readFileSync('./contracts/compiled/DappKingdom.abi.json'));
+const bytecode = fs.readFileSync('./contracts/compiled/DappKingdom.bytecode.json').toString();
+
+async function deploy() {
+  try {
+    const contract = await tronWeb.contract().new({
+      abi: abi,
+      bytecode: bytecode,
+      feeLimit: 100_000_000,
+      callValue: 0,
+    });
+
+    console.log('🎉 قرارداد دیپلوی شد در آدرس:', contract.address);
+  } catch (err) {
+    console.error('خطا در دیپلوی قرارداد:', err);
+  }
+}
+
+deploy();
+import React, { useState } from 'react';
+import TronWeb from 'tronweb';
+
+function App() {
+  const [connected, setConnected] = useState(false);
+  const [trxAmount, setTrxAmount] = useState("");
+
+  const vote = async () => {
+    const tronWeb = window.tronWeb;
+    if (!tronWeb || !tronWeb.defaultAddress.base58) {
+      alert("TronLink not connected");
+      return;
+    }
+
+    const contractAddress = "YOUR_CONTRACT_ADDRESS_HERE";
+    const contract = await tronWeb.contract().at(contractAddress);
+    await contract.vote().send({ callValue: tronWeb.toSun(trxAmount) });
+    alert("Vote sent!");
+  };
+
+  return (
+    <div style={{ padding: 30 }}>
+      <h1>DApp Kingdom Voting</h1>
+      <input
+        type="number"
+        placeholder="TRX Amount"
+        value={trxAmount}
+        onChange={(e) => setTrxAmount(e.target.value)}
+      />
+      <button onClick={vote}>Vote with TRX</button>
+    </div>
+  );
+}
+
+export default App;
+[
+  {
+    "inputs": [],
+    "stateMutability": "nonpayable",
+    "type": "constructor"
+  },
+  {
+    "inputs": [],
+    "name": "owner",
+    "outputs": [
+      {
+        "internalType": "address",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "vote",
+    "outputs": [],
+    "stateMutability": "payable",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "withdraw",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "user",
+        "type": "address"
+      }
+    ],
+    "name": "getVotes",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  }
+]
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.0;
+
+contract DappKingdom {
+    address public owner;
+    mapping(address => uint256) public votes;
+
+    event Voted(address indexed voter, uint256 amount);
+
+    constructor() {
+        owner = msg.sender;
+    }
+
+    function vote() external payable {
+        require(msg.value > 0, "TRX required to vote");
+        votes[msg.sender] += msg.value;
+        emit Voted(msg.sender, msg.value);
+    }
+
+    function withdraw() external {
+        require(msg.sender == owner, "Only owner can withdraw");
+        payable(owner).transfer(address(this).balance);
+    }
+
+    function getVotes(address user) external view returns (uint256) {
+        return votes[user];
+    }
+}
